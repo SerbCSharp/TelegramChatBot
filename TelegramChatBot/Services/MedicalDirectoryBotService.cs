@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Options;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using TelegramChatBot.Infrastructure.Repositories;
+using TelegramChatBot.Model;
 
 namespace TelegramChatBot.Services
 {
@@ -9,11 +11,13 @@ namespace TelegramChatBot.Services
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly TelegramConfiguration _telegramConfiguration;
+        private readonly RequestRepository _requestRepository;
 
-        public MedicalDirectoryBotService(IOptions<TelegramConfiguration> telegramConfiguration, IHttpClientFactory httpClientFactory)
+        public MedicalDirectoryBotService(IOptions<TelegramConfiguration> telegramConfiguration, IHttpClientFactory httpClientFactory, RequestRepository requestRepository)
         {
             _telegramConfiguration = telegramConfiguration.Value ?? throw new ArgumentNullException(nameof(telegramConfiguration));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _requestRepository = requestRepository ?? throw new ArgumentNullException(nameof(requestRepository));
         }
 
         public async Task<string> ResponseAsync(Message message)
@@ -23,6 +27,7 @@ namespace TelegramChatBot.Services
             {
                 if (message.Text == "/start")
                 {
+                    await _requestRepository.CreateRequestAsync(new Request { ChatId = message.Chat.Id, Text = message.Text });
                 }
 
                 else if (message.Text != null)
@@ -30,6 +35,7 @@ namespace TelegramChatBot.Services
                     var httpClient = _httpClientFactory.CreateClient();
                     var diseases = new List<DiseaseDto>();
 
+                    await _requestRepository.CreateRequestAsync(new Request { ChatId = message.Chat.Id, Text = message.Text });
                     var httpResponseMessage = await httpClient.GetAsync($"{_telegramConfiguration.UriBackend}Diagnostic/SearchForDiseasesBySymptom?message={message.Text}");
                     if (httpResponseMessage.IsSuccessStatusCode)
                     {
